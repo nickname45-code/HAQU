@@ -7,6 +7,8 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1B6B3A">
   <link rel="apple-touch-icon" href="icon-192.png">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     /* ==========================================
        1. DESIGN SYSTEM & RESET
@@ -66,6 +68,7 @@
     body.role-superadmin .sidebar { display: block; }
     body.role-superadmin .bottom-nav { display: none !important; }
     body.role-ustadz .bottom-nav, body.role-santri .bottom-nav { display: flex; }
+    body.role-santri .nav-ustadz-only { display: none !important; }
 
     /* ==========================================
        4. UI COMPONENTS
@@ -77,7 +80,24 @@
     
     .form-group { margin-bottom: 15px; }
     .form-group label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px;}
-    .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; font-family: inherit;}
+    .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; font-family: inherit; background: var(--surface); color: var(--text-main); transition: all 0.3s ease;}
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(27, 107, 58, 0.15); }
+    .btn { transition: all 0.3s ease; }
+    .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+    
+    /* Login UI Split Layout */
+    .login-wrapper { display: flex; max-width: 900px; margin: 8vh auto; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.1); background: var(--surface); min-height: 550px; }
+    .login-banner { flex: 1; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); padding: 40px; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; text-align: center; position: relative; overflow: hidden;}
+    .login-banner::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%); animation: rotateBg 20s linear infinite; pointer-events: none;}
+    @keyframes rotateBg { 100% { transform: rotate(360deg); } }
+    .login-form-area { flex: 1; padding: 40px; display: flex; align-items: center; justify-content: center; position: relative; }
+    .mobile-logo { display: none; width: 120px; height: auto; margin: 0 auto 15px auto; border-radius: 16px; }
+    @media (max-width: 768px) {
+      .login-wrapper { flex-direction: column; margin: 4vh 20px; border-radius: 16px; min-height: auto;}
+      .login-banner { display: none; } /* Sembunyikan gambar di layar hp */
+      .login-form-area { padding: 30px 20px; }
+      .mobile-logo { display: block; }
+    }
     
     /* Progress Bar */
     .progress-bg { background: var(--border); height: 20px; border-radius: 10px; width: 100%; overflow: hidden; margin-top: 10px;}
@@ -93,19 +113,56 @@
     
     <!-- HALAMAN: LOGIN -->
     <div id="page-login" class="page active">
-      <div class="card" style="max-width: 350px; margin: 60px auto;">
-        <h2 style="text-align: center; color: var(--primary); margin-bottom: 25px;">HafalQuran</h2>
-        <form id="form-login">
-          <div class="form-group">
-            <label>Username</label>
-            <input type="text" id="login-username" required>
+      <div class="login-wrapper">
+        <!-- Sisi Kiri: Visual Banner (PC) -->
+        <div class="login-banner">
+          <img src="logo.png" alt="Logo HAQU" style="width: 240px; height: auto; margin-bottom: 25px; z-index: 1; animation: fadeIn 1s ease; border-radius: 24px; box-shadow: 0 10px 20px rgba(0,0,0,0.15);">
+          <p style="font-size: 16px; line-height: 1.6; opacity: 0.9; z-index: 1;">Sistem pencatatan dan evaluasi tahfidz digital yang terintegrasi secara real-time.</p>
+        </div>
+        
+        <!-- Sisi Kanan: Area Form -->
+        <div class="login-form-area">
+          <!-- Card Login -->
+          <div id="card-login" style="width: 100%; max-width: 350px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <img src="logo.png" alt="Logo HAQU" class="mobile-logo">
+              <h2 style="color: var(--primary); font-size: 28px; font-weight: 800; margin-bottom: 5px;">Selamat Datang</h2>
+              <p style="color: var(--text-muted); font-size: 14px;">Silakan masuk ke akun Anda</p>
+            </div>
+            <form id="form-login">
+              <div class="form-group">
+                <label style="color: var(--text-muted);">Username</label>
+                <input type="text" id="login-username" placeholder="Masukkan username" required style="padding: 14px;">
+              </div>
+              <div class="form-group">
+                <label style="color: var(--text-muted);">Password</label>
+                <div style="position: relative;">
+                  <input type="password" id="login-password" placeholder="Masukkan password" required style="padding: 14px; padding-right: 40px;">
+                  <span id="toggle-login-password" onclick="togglePasswordVisibility('login-password', 'toggle-login-password')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; user-select: none; opacity: 0.7;" title="Tampilkan/Sembunyikan Sandi">👁️</span>
+                </div>
+              </div>
+              <button type="submit" class="btn" id="btn-login" style="padding: 14px; font-size: 16px; border-radius: 8px; margin-top: 10px;">Masuk</button>
+              <p style="text-align: center; margin-top: 20px;"><a href="#" onclick="toggleForgot(true)" style="font-size: 13px; color: var(--primary); text-decoration: none; font-weight: 600;">Lupa Password?</a></p>
+            </form>
           </div>
-          <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="login-password" required>
+
+          <!-- Card Lupa Password -->
+          <div id="card-forgot" style="width: 100%; max-width: 350px; display: none;">
+            <div style="text-align: center; margin-bottom: 25px;">
+              <div style="font-size: 40px; margin-bottom: 10px;">🔐</div>
+              <h2 style="color: var(--primary); font-size: 24px; font-weight: 800; margin-bottom: 5px;">Lupa Password</h2>
+              <p style="color: var(--text-muted); font-size: 13px; line-height: 1.5;">Masukkan username Anda. Sistem akan mengirimkan notifikasi ke Admin untuk mereset sandi Anda.</p>
+            </div>
+            <form id="form-forgot">
+              <div class="form-group">
+                <label style="color: var(--text-muted);">Username</label>
+                <input type="text" id="forgot-username" placeholder="Masukkan username" required style="padding: 14px;">
+              </div>
+              <button type="submit" class="btn" id="btn-forgot" style="padding: 14px; font-size: 16px; border-radius: 8px; margin-top: 10px;">Kirim Permintaan</button>
+              <p style="text-align: center; margin-top: 20px;"><a href="#" onclick="toggleForgot(false)" style="font-size: 13px; color: var(--text-muted); text-decoration: none; font-weight: 600;">Kembali ke Login</a></p>
+            </form>
           </div>
-          <button type="submit" class="btn" id="btn-login">Masuk</button>
-        </form>
+        </div>
       </div>
     </div>
 
@@ -171,8 +228,52 @@
             <input type="text" id="setoran-catatan" placeholder="Opsional...">
           </div>
 
-          <button type="submit" class="btn">Simpan Setoran</button>
+          <input type="hidden" id="setoran-id">
+          <button type="submit" class="btn" id="btn-submit-setoran">Simpan Setoran</button>
         </form>
+      </div>
+      
+      <!-- CARD: RIWAYAT SETORAN & EDIT -->
+      <div class="card" style="margin-top: 15px;" id="setoran-history-card">
+        <h3 style="font-size: 16px; margin-bottom: 10px;">Riwayat Setoran Terakhir</h3>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+            <thead><tr style="border-bottom: 2px solid var(--border);"><th style="padding: 10px;">Tanggal</th><th style="padding: 10px;">Santri</th><th style="padding: 10px;">Surah & Ayat</th><th style="padding: 10px;">Nilai</th><th style="padding: 10px;">Status</th><th style="padding: 10px;">Aksi</th></tr></thead>
+            <tbody id="table-setoran-body"><tr><td colspan="6" style="padding: 10px; text-align: center; color: var(--text-muted);">Memuat riwayat...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- HALAMAN: SCAN QR (Hanya Ustadz) -->
+    <div id="page-scan" class="page">
+      <h2>Scan Kartu QR</h2>
+      <div class="card" style="margin-top: 15px; text-align: center;">
+        <div id="qr-reader" style="width: 100%; max-width: 400px; margin: 0 auto; border-radius: 8px; overflow: hidden;"></div>
+        <p id="qr-status" style="margin-top: 15px; color: var(--text-muted);">Arahkan kamera ke QR Code Santri</p>
+      </div>
+      <div id="qr-result-card" class="card" style="display: none; border-left: 4px solid var(--primary);">
+        <h3 id="qr-santri-name" style="margin-bottom: 5px;">Nama Santri</h3>
+        <p id="qr-santri-halaqah" style="font-size: 14px; color: var(--text-muted); margin-bottom: 15px;">Halaqah</p>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn" style="flex: 1;" onclick="qrHadirFast()">✅ Hadir</button>
+          <button class="btn" style="flex: 1; background: var(--accent);" onclick="qrGoToSetoran()">📖 Setoran</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HALAMAN: ABSENSI MASSAL (Hanya Ustadz/Admin) -->
+    <div id="page-absensi" class="page">
+      <h2>Absensi Kelas</h2>
+      <div class="card" style="margin-top: 15px;">
+        <div class="form-group" style="display: flex; gap: 10px; align-items: flex-end;">
+          <div style="flex: 1;"><label>Pilih Halaqah</label>
+          <select id="absensi-halaqah" required onchange="loadAbsensiSantri(this.value)"><option value="">-- Pilih Halaqah --</option></select></div>
+          <button type="button" id="btn-print-absensi" class="btn btn-outline" style="width: auto; padding: 12px; display: none;" onclick="cetakAbsensiPDF()" title="Cetak Daftar Hadir Kosong">🖨️ Cetak PDF</button>
+        </div>
+        <div class="form-group"><label>Tanggal</label><input type="date" id="absensi-tanggal" required></div>
+        <div id="absensi-list" style="margin-top: 20px;"></div>
+        <button class="btn" id="btn-submit-absensi" style="margin-top: 15px; display: none;" onclick="submitBulkAbsensi()">Simpan Absensi Massal</button>
       </div>
     </div>
 
@@ -262,6 +363,18 @@
       </div>
     </div>
 
+    <!-- HALAMAN: PENGATURAN (Hanya Admin) -->
+    <div id="page-pengaturan" class="page">
+      <h2>Pengaturan Sistem</h2>
+      <div class="card" style="margin-top: 15px;">
+        <form id="form-pengaturan">
+          <div class="form-group"><label>Nama Aplikasi</label><input type="text" id="config-app-name" placeholder="HAQU" required></div>
+          <div class="form-group"><label>Standar Kelulusan Nilai Minimum (0-100)</label><input type="number" id="config-min-grade" min="0" max="100" placeholder="Contoh: 70" required></div>
+          <button type="submit" class="btn">Simpan Pengaturan</button>
+        </form>
+      </div>
+    </div>
+
     <!-- HALAMAN: LAPORAN (Hanya Admin) -->
     <div id="page-laporan" class="page">
       <h2>Laporan & Rapor PDF</h2>
@@ -271,6 +384,10 @@
             <label>Pilih Santri</label>
             <select id="laporan-santri" required><option value="">-- Memuat Data --</option></select>
           </div>
+          <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <div style="flex: 1;"><label style="font-size: 14px; font-weight: 600; display: block; margin-bottom: 8px;">Dari Tanggal (Opsional)</label><input type="date" id="laporan-start" style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text-main);"></div>
+            <div style="flex: 1;"><label style="font-size: 14px; font-weight: 600; display: block; margin-bottom: 8px;">Sampai (Opsional)</label><input type="date" id="laporan-end" style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text-main);"></div>
+          </div>
           <button type="submit" class="btn" id="btn-generate-rapor">Buat Rapor Baru</button>
         </form>
         
@@ -278,6 +395,15 @@
           <h4 style="margin-bottom: 10px; color: var(--primary);">✅ Rapor Berhasil Dibuat!</h4>
           <a id="link-doc" href="#" target="_blank" class="btn" style="display: block; text-align: center; margin-bottom: 10px; background: #4285F4; text-decoration: none;">📝 Buka Versi Editable (Google Doc)</a>
           <a id="link-pdf" href="#" target="_blank" class="btn" style="display: block; text-align: center; background: #EA4335; text-decoration: none;">📄 Buka / Unduh Versi PDF</a>
+        </div>
+      </div>
+      
+      <div class="card" style="margin-top: 15px;">
+        <h3 style="margin-bottom: 15px; font-size: 16px;">Ekspor Data (CSV)</h3>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn btn-outline" style="width: auto; flex: 1; padding: 10px; font-size: 14px;" onclick="exportDataCSV('santri')">📥 Data Santri</button>
+          <button class="btn btn-outline" style="width: auto; flex: 1; padding: 10px; font-size: 14px;" onclick="exportDataCSV('setoran')">📥 Data Setoran</button>
+          <button class="btn btn-outline" style="width: auto; flex: 1; padding: 10px; font-size: 14px;" onclick="exportDataCSV('absensi')">📥 Data Absensi</button>
         </div>
       </div>
     </div>
@@ -298,6 +424,14 @@
           <p style="color: var(--text-muted); font-size: 14px;">Memuat riwayat...</p>
         </div>
       </div>
+      
+      <div class="card" style="margin-top: 15px; text-align: center; max-width: 350px; margin-left: auto; margin-right: auto; padding: 30px;" id="print-area">
+        <img src="logo.png" alt="Logo" style="width: 60px; margin-bottom: 10px; border-radius: 12px;">
+        <h3 style="color: var(--primary); font-size: 18px; margin-bottom: 5px;">HAQU</h3><p style="font-size: 12px; color: var(--text-muted); margin-bottom: 20px;">Kartu Setoran Santri</p>
+        <img id="qr-card-img" src="" alt="QR Code" style="width: 200px; height: 200px; border: 4px solid var(--border); border-radius: 8px; margin-bottom: 15px; padding: 10px;">
+        <h2 id="qr-card-name" style="font-size: 20px; margin-bottom: 5px;">Nama Santri</h2><p id="qr-card-role" style="font-size: 14px; color: var(--accent); text-transform: uppercase;">SANTRI</p>
+        <button class="btn btn-outline" style="margin-top: 15px;" onclick="window.print()">🖨️ Cetak Kartu</button>
+      </div>
     </div>
 
   </div> <!-- End #app -->
@@ -307,17 +441,22 @@
        ========================================== -->
   <!-- Sidebar (Desktop - Superadmin) -->
   <nav id="sidebar" class="sidebar">
-    <h3>HafalQuran</h3>
+    <h3>HAQU</h3>
     <a href="#dashboard">📊 Dashboard</a>
     <a href="#pengguna">👥 Pengguna</a>
     <a href="#halaqah">🕌 Halaqah</a>
+    <a href="#absensi">📋 Absensi Kelas</a>
+    <a href="#setoran">📖 Data Setoran</a>
     <a href="#laporan">📄 Laporan (Rapor)</a>
+    <a href="#pengaturan">⚙️ Pengaturan</a>
     <a href="#" onclick="logout()" style="margin-top: 50px; color: #ffcccc;">🚪 Keluar</a>
   </nav>
 
   <!-- Bottom Nav (Mobile - Ustadz & Santri) -->
   <nav id="bottom-nav" class="bottom-nav">
     <button onclick="location.hash='#dashboard'"><span>🏠</span> Beranda</button>
+    <button onclick="location.hash='#scan'" class="nav-ustadz-only"><span>📷</span> Scan</button>
+    <button onclick="location.hash='#absensi'" class="nav-ustadz-only"><span>📋</span> Absen</button>
     <button onclick="location.hash='#setoran'"><span>📖</span> Setoran</button>
     <button onclick="location.hash='#profil'"><span>👤</span> Profil</button>
     <button onclick="logout()"><span>🚪</span> Keluar</button>
@@ -345,9 +484,17 @@
       user: JSON.parse(localStorage.getItem('hq_user')) || null, // Pulihkan dari memori browser
       token: localStorage.getItem('hq_token') || null
     };
+    
+    let html5QrcodeScanner = null;
+    let currentScannedSantri = null;
+    let chartInstances = {};
 
     // 1. API Client Fetch Wrapper
     async function api(action, data = {}) {
+      if (!navigator.onLine) {
+        throw new Error('Anda sedang offline (Tidak ada sinyal internet). Transaksi dibatalkan.');
+      }
+      
       // text/plain digunakan agar GAS tidak memicu preflight CORS options yang sering error
       const res = await fetch(GAS_URL, {
         method: 'POST',
@@ -375,6 +522,9 @@
       
       if (targetPage) {
         targetPage.classList.add('active');
+        if (path === 'scan' && (state.user?.role === 'ustadz' || state.user?.role === 'superadmin')) setTimeout(initQrScanner, 500);
+        else if (typeof stopQrScanner === 'function') stopQrScanner();
+        
         renderPageContent(path); // Panggil fungsi spesifik page
       } else {
         document.getElementById('page-dashboard').classList.add('active');
@@ -405,6 +555,13 @@
       }
       if (page === 'setoran') {
         initSetoranForm();
+        loadSetoranData();
+      }
+      if (page === 'absensi' && (state.user.role === 'ustadz' || state.user.role === 'superadmin')) {
+        initAbsensiForm();
+      }
+      if (page === 'pengaturan' && state.user.role === 'superadmin') {
+        loadPengaturan();
       }
       if (page === 'pengguna' && state.user.role === 'superadmin') {
         loadPenggunaData();
@@ -418,6 +575,7 @@
       }
       if (page === 'profil') {
         loadProfilData();
+        loadQrCard();
       }
     }
 
@@ -436,6 +594,10 @@
               <div class="card" style="flex: 1;"><h3 style="font-size: 24px; color: var(--primary);">${stats.total_ustadz}</h3><p style="font-size: 12px; color: var(--text-muted);">Ustadz</p></div>
               <div class="card" style="flex: 1;"><h3 style="font-size: 24px; color: var(--primary);">${stats.total_halaqah}</h3><p style="font-size: 12px; color: var(--text-muted);">Halaqah</p></div>
             </div>
+        <div class="card" style="margin-top: 15px;">
+          <h3>Grafik Setoran 14 Hari Terakhir</h3>
+          <canvas id="chart-setoran" style="width: 100%; height: 250px;"></canvas>
+        </div>
           `;
         } else if (state.user.role === 'ustadz') {
           html = `
@@ -451,6 +613,20 @@
           `;
         }
         container.innerHTML = html;
+      
+      // Render Chart for Superadmin
+      if (state.user.role === 'superadmin' && stats.chart) {
+        if (chartInstances['setoran']) chartInstances['setoran'].destroy();
+        const ctx = document.getElementById('chart-setoran').getContext('2d');
+        chartInstances['setoran'] = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: stats.chart.labels,
+            datasets: [{ label: 'Jumlah Setoran', data: stats.chart.data, borderColor: '#1B6B3A', tension: 0.3, fill: true, backgroundColor: 'rgba(27, 107, 58, 0.1)' }]
+          },
+          options: { responsive: true, maintainAspectRatio: false }
+        });
+      }
       } catch (err) {
         container.innerHTML = `<p style="color: red;">Gagal memuat data: ${err.message}</p>`;
       }
@@ -559,6 +735,222 @@
       } catch (err) {
         historyContainer.innerHTML = `<p style="color: red;">Gagal memuat data profil: ${err.message}</p>`;
       }
+    }
+
+    // ==========================================
+    // MODUL PENGATURAN
+    // ==========================================
+    async function loadPengaturan() {
+      try {
+        const res = await api('config.get');
+        document.getElementById('config-app-name').value = res.data.app_name || 'HAQU';
+        document.getElementById('config-min-grade').value = res.data.min_grade || 70;
+      } catch(e) {
+        console.error('Gagal memuat pengaturan', e);
+      }
+    }
+
+    // ==========================================
+    // MODUL QR SCANNER & KARTU QR
+    // ==========================================
+    function loadQrCard() {
+      if (!state.user) return;
+      const qrImg = document.getElementById('qr-card-img');
+      if (document.getElementById('qr-card-name')) {
+        document.getElementById('qr-card-name').innerText = state.user.name;
+      }
+      const qrData = `HAQU_SANTRI:${state.user.id}`;
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}&margin=10`;
+      if (!qrImg.src || !qrImg.src.includes(encodeURIComponent(qrData))) {
+        qrImg.src = qrUrl;
+      }
+    }
+
+    function initQrScanner() {
+      if (html5QrcodeScanner) return; 
+      html5QrcodeScanner = new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
+      html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+    }
+
+    function stopQrScanner() {
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.clear().catch(error => console.error("Failed to clear scanner", error));
+        html5QrcodeScanner = null;
+      }
+    }
+
+    async function onScanSuccess(decodedText, decodedResult) {
+      if (!decodedText.startsWith('HAQU_SANTRI:')) return;
+      const santriId = decodedText.split(':')[1];
+      
+      stopQrScanner();
+      document.getElementById('qr-status').innerText = 'Memuat data santri...';
+      
+      try {
+        const res = await api('santri.getQuickInfo', { id: santriId });
+        currentScannedSantri = res.data.santri;
+        document.getElementById('qr-santri-name').innerText = currentScannedSantri.name;
+        document.getElementById('qr-santri-halaqah').innerText = res.data.halaqah.name;
+        document.getElementById('qr-result-card').style.display = 'block';
+        document.getElementById('qr-status').innerText = 'Scan Berhasil!';
+      } catch (e) {
+        document.getElementById('qr-status').innerText = 'Gagal memuat data: ' + e.message;
+        setTimeout(initQrScanner, 2000);
+      }
+    }
+
+    function onScanFailure(error) { /* Handle silently */ }
+
+    async function qrHadirFast() {
+      if (!currentScannedSantri) return;
+      try {
+        await api('absensi.submitSingle', {
+          halaqah_id: '', 
+          santri_id: currentScannedSantri.id,
+          tanggal: new Date().toISOString().split('T')[0],
+          status: 'hadir',
+          keterangan: 'Hadir (Scan QR)'
+        });
+        alert('Kehadiran dicatat!');
+        document.getElementById('qr-result-card').style.display = 'none';
+        initQrScanner();
+      } catch (e) {
+        alert('Gagal: ' + e.message);
+      }
+    }
+
+    function qrGoToSetoran() {
+      if (!currentScannedSantri) return;
+      location.hash = '#setoran';
+      setTimeout(() => {
+        document.getElementById('setoran-santri').value = currentScannedSantri.id;
+      }, 1000);
+    }
+
+    // ==========================================
+    // MODUL ABSENSI MASSAL
+    // ==========================================
+    let currentAbsensiMembers = [];
+    async function initAbsensiForm() {
+      document.getElementById('absensi-tanggal').value = new Date().toISOString().split('T')[0];
+      try {
+        const res = await api('absensi.getForm');
+        const select = document.getElementById('absensi-halaqah');
+        select.innerHTML = '<option value="">-- Pilih Halaqah --</option>' + res.data.map(h => `<option value="${h.id}">${h.name}</option>`).join('');
+        window.absensiDataCache = res.data;
+      } catch (e) { console.error(e); }
+    }
+
+    function loadAbsensiSantri(halaqahId) {
+      const listDiv = document.getElementById('absensi-list');
+      if (!halaqahId) { 
+        listDiv.innerHTML = ''; 
+        document.getElementById('btn-submit-absensi').style.display = 'none'; 
+        document.getElementById('btn-print-absensi').style.display = 'none';
+        return; 
+      }
+      const halaqah = window.absensiDataCache.find(h => h.id === halaqahId);
+      currentAbsensiMembers = halaqah.members;
+      document.getElementById('btn-print-absensi').style.display = 'block';
+      
+      if (currentAbsensiMembers.length === 0) {
+        listDiv.innerHTML = '<p>Belum ada santri di halaqah ini.</p>';
+        document.getElementById('btn-submit-absensi').style.display = 'none';
+        return;
+      }
+      listDiv.innerHTML = currentAbsensiMembers.map((m, i) => `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border);">
+          <span>${m.name}</span>
+          <select id="absen-status-${i}" style="width: auto; padding: 6px;">
+            <option value="hadir">✅ Hadir</option>
+            <option value="sakit">🤒 Sakit</option>
+            <option value="izin">📝 Izin</option>
+            <option value="alfa">❌ Alfa</option>
+          </select>
+        </div>`).join('');
+      document.getElementById('btn-submit-absensi').style.display = 'block';
+    }
+
+    async function submitBulkAbsensi() {
+      const btn = document.getElementById('btn-submit-absensi');
+      btn.disabled = true; btn.innerText = 'Menyimpan...';
+      const records = currentAbsensiMembers.map((m, i) => ({
+        halaqah_id: document.getElementById('absensi-halaqah').value,
+        santri_id: m.id,
+        status: document.getElementById(`absen-status-${i}`).value
+      }));
+      try {
+        await api('absensi.submit', { tanggal: document.getElementById('absensi-tanggal').value, records });
+        alert('Absensi kelas berhasil disimpan!');
+        document.getElementById('absensi-halaqah').value = '';
+        loadAbsensiSantri('');
+      } catch (e) {
+        alert('Gagal: ' + e.message);
+      } finally {
+        btn.disabled = false; btn.innerText = 'Simpan Absensi Massal';
+      }
+    }
+    
+    async function cetakAbsensiPDF() {
+      const halaqahId = document.getElementById('absensi-halaqah').value;
+      if (!halaqahId) return;
+      const btn = document.getElementById('btn-print-absensi');
+      const originalText = btn.innerText;
+      btn.disabled = true; btn.innerText = '⏳ Memproses...';
+      try {
+        const res = await api('absensi.printPDF', { halaqah_id: halaqahId });
+        if (res.status === 'success') window.open(res.data.pdfUrl, '_blank');
+      } catch (err) {
+        alert('Gagal mencetak: ' + err.message);
+      } finally {
+        btn.disabled = false; btn.innerText = originalText;
+      }
+    }
+
+    // ==========================================
+    // MODUL EDIT & RIWAYAT SETORAN 
+    // ==========================================
+    async function loadSetoranData() {
+      const tbody = document.getElementById('table-setoran-body');
+      if (!tbody) return;
+      tbody.innerHTML = '<tr><td colspan="6" style="padding: 10px; text-align: center;">Memuat riwayat...</td></tr>';
+      try {
+        const res = await api('setoran.list');
+        window.setoranDataCache = res.data; // Simpan cache untuk di-edit
+        if (res.data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="padding: 10px; text-align: center; color: var(--text-muted);">Belum ada data setoran.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = res.data.map(s => {
+          const dateOnly = s.tanggal ? s.tanggal.split('T')[0] : '-';
+          const statusColor = s.status === 'lulus' ? 'green' : 'red';
+          return `
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 10px;">${dateOnly}</td>
+              <td style="padding: 10px;">${s.santri_name}</td>
+              <td style="padding: 10px;">Juz ${s.juz} <br><span style="font-size:12px; color:var(--text-muted);">Surah ${s.surah_mulai} : ${s.ayat_mulai}</span></td>
+              <td style="padding: 10px;">T:${s.nilai_tajwid} F:${s.nilai_kelancaran} M:${s.nilai_makhraj}</td>
+              <td style="padding: 10px;"><span style="color: ${statusColor}; font-weight: bold; text-transform: capitalize;">${s.status}</span></td>
+              <td style="padding: 10px;">
+                <button class="btn btn-outline" style="padding: 5px 10px; font-size: 12px; width: auto;" onclick="editSetoran('${s.id}')">Edit</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color: red; text-align: center;">Gagal memuat data: ${err.message}</td></tr>`;
+      }
+    }
+    
+    async function exportDataCSV(type) {
+      try {
+        const res = await api('laporan.exportCSV', { export_type: type });
+        if (res.status === 'success') {
+          const blob = new Blob([res.data.csv], { type: 'text/csv;charset=utf-8;' });
+          const link = document.createElement('a'); link.href = URL.createObjectURL(blob);
+          link.download = res.data.filename; link.click();
+        }
+      } catch(err) { alert('Gagal mengekspor data: ' + err.message); }
     }
 
     // ==========================================
@@ -755,11 +1147,52 @@
         }
       };
     }
+    
+    function editSetoran(id) {
+      const s = window.setoranDataCache.find(x => x.id === id);
+      if (!s) return;
+      document.getElementById('setoran-id').value = s.id;
+      document.getElementById('setoran-santri').value = s.santri_id;
+      document.getElementById('setoran-jenis').value = s.jenis;
+      document.getElementById('setoran-juz').value = s.juz;
+      
+      document.getElementById('setoran-juz').dispatchEvent(new Event('change'));
+      setTimeout(() => {
+        document.getElementById('setoran-surah').value = s.surah_mulai;
+        document.getElementById('setoran-surah').dispatchEvent(new Event('change'));
+        setTimeout(() => { document.getElementById('setoran-ayat').value = s.ayat_mulai; }, 100);
+      }, 100);
+
+      document.getElementById('nilai-tajwid').value = s.nilai_tajwid;
+      document.getElementById('nilai-kelancaran').value = s.nilai_kelancaran;
+      document.getElementById('nilai-makhraj').value = s.nilai_makhraj;
+      document.getElementById('setoran-status').value = s.status;
+      document.getElementById('setoran-catatan').value = s.catatan || '';
+      document.getElementById('btn-submit-setoran').innerText = 'Perbarui Setoran';
+      window.scrollTo(0, 0);
+    }
 
     // ==========================================
     // 6. EVENT LISTENERS (FORM SUBMISSIONS)
     // ==========================================
     
+    function toggleForgot(showForgot) {
+      document.getElementById('card-login').style.display = showForgot ? 'none' : 'block';
+      document.getElementById('card-forgot').style.display = showForgot ? 'block' : 'none';
+    }
+
+    function togglePasswordVisibility(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.innerText = '🙈';
+      } else {
+        input.type = 'password';
+        icon.innerText = '👁️';
+      }
+    }
+
     // A. Event Listener Form Login
     document.getElementById('form-login').addEventListener('submit', async (e) => {
       e.preventDefault(); // Mencegah page reload
@@ -785,11 +1218,31 @@
       }
     });
 
+    // A2. Event Listener Form Lupa Password
+    document.getElementById('form-forgot').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btn-forgot');
+      btn.disabled = true; btn.innerText = 'Mengirim...';
+      try {
+        const username = document.getElementById('forgot-username').value;
+        const res = await api('auth.forgotPassword', { username });
+        if (res.status === 'success') {
+          alert(res.message);
+          toggleForgot(false); // Kembali ke form login
+          e.target.reset();
+        }
+      } catch (err) {
+        alert('Gagal: ' + err.message);
+      } finally {
+        btn.disabled = false; btn.innerText = 'Kirim Permintaan';
+      }
+    });
+
     // B. Event Listener Form Setoran
     document.getElementById('form-setoran').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const btn = e.target.querySelector('button[type="submit"]');
-      const originalText = btn.innerText;
+      const btn = document.getElementById('btn-submit-setoran');
+      const isEdit = document.getElementById('setoran-id').value;
       btn.disabled = true; btn.innerText = 'Menyimpan...';
 
       try {
@@ -806,18 +1259,22 @@
           status: document.getElementById('setoran-status').value,
           catatan: document.getElementById('setoran-catatan').value
         };
-
-        const res = await api('setoran.create', payload);
+        
+        if (isEdit) payload.id = isEdit;
+        const res = await api(isEdit ? 'setoran.update' : 'setoran.create', payload);
+        
         if (res.status === 'success') {
           alert('Alhamdulillah, setoran berhasil dicatat!');
-          e.target.reset(); // Kosongkan form kembali
+          e.target.reset();
+          document.getElementById('setoran-id').value = '';
           document.getElementById('setoran-surah').disabled = true;
           document.getElementById('setoran-ayat').disabled = true;
+          loadSetoranData();
         }
       } catch (err) {
         alert('Gagal menyimpan: ' + err.message);
       } finally {
-        btn.disabled = false; btn.innerText = originalText;
+        btn.disabled = false; btn.innerText = 'Simpan Setoran';
       }
     });
 
@@ -862,7 +1319,9 @@
 
       try {
         const santri_id = document.getElementById('laporan-santri').value;
-        const res = await api('laporan.generate', { santri_id });
+        const start_date = document.getElementById('laporan-start').value;
+        const end_date = document.getElementById('laporan-end').value;
+        const res = await api('laporan.generate', { santri_id, start_date, end_date });
         
         if (res.status === 'success') {
           document.getElementById('link-doc').href = res.data.docUrl;
@@ -928,6 +1387,27 @@
         btn.disabled = false; btn.innerText = originalText;
       }
     });
+
+    // G. Event Listener Form Pengaturan
+    if (document.getElementById('form-pengaturan')) {
+      document.getElementById('form-pengaturan').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.innerText;
+        btn.disabled = true; btn.innerText = 'Menyimpan...';
+        try {
+          await api('config.save', {
+            app_name: document.getElementById('config-app-name').value,
+            min_grade: document.getElementById('config-min-grade').value
+          });
+          alert('Pengaturan berhasil disimpan!');
+        } catch (err) {
+          alert('Gagal: ' + err.message);
+        } finally {
+          btn.disabled = false; btn.innerText = originalText;
+        }
+      });
+    }
 
     // Jalankan inisialisasi halaman saat pertama kali dimuat atau di-refresh
     window.addEventListener('DOMContentLoaded', () => {
