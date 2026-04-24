@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HAQU</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1B6B3A">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <style>
+    /* ==========================================
+       1. DESIGN SYSTEM & RESET
+       ========================================== */
+    :root {
+      --primary: #1B6B3A;
+      --primary-dark: #124a28;
+      --accent: #C9A84C;
+      --bg-color: #F8F5F0;
+      --surface: #FFFFFF;
+      --text-main: #1A1A2E;
+      --text-muted: #666666;
+      --border: #E0E0E0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-color); color: var(--text-main); }
+
+    /* ==========================================
+       2. SPA LAYOUT & ROUTING CLASSES
+       ========================================== */
+    .page { 
+      display: none; 
+      padding: 20px; 
+      padding-bottom: 80px; /* Space for bottom nav */
+      animation: fadeIn 0.3s ease;
+    }
+    .page.active { display: block; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* ==========================================
+       3. NAVIGATION (ROLE-BASED)
+       ========================================== */
+    /* Bottom Navigation (Mobile - Ustadz/Santri) */
+    .bottom-nav {
+      display: none; position: fixed; bottom: 0; width: 100%;
+      background: var(--surface); box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+      justify-content: space-around; padding: 12px 0; z-index: 1000;
+    }
+    .bottom-nav button { 
+      background: none; border: none; font-size: 12px; color: var(--text-muted); 
+      cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    }
+    .bottom-nav button span { font-size: 20px; }
+    
+    /* Sidebar (Desktop - Superadmin) */
+    .sidebar {
+      display: none; position: fixed; top: 0; left: 0; width: 250px; height: 100vh;
+      background: var(--primary); color: white; padding: 20px;
+    }
+    .sidebar h3 { margin-bottom: 30px; color: var(--accent); text-align: center;}
+    .sidebar a { display: block; color: white; text-decoration: none; padding: 12px 15px; margin-bottom: 5px; border-radius: 6px; }
+    .sidebar a:hover { background: rgba(255,255,255,0.1); color: var(--accent); }
+
+    /* Role Based Display Logic */
+    body.role-superadmin .page { margin-left: 250px; padding-bottom: 20px; }
+    body.role-superadmin .sidebar { display: block; }
+    body.role-superadmin .bottom-nav { display: none !important; }
+    body.role-ustadz .bottom-nav, body.role-santri .bottom-nav { display: flex; }
+
+    /* ==========================================
+       4. UI COMPONENTS
+       ========================================== */
+    .card { background: var(--surface); border-radius: 8px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .btn { background: var(--primary); color: white; border: none; padding: 12px 15px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold;}
+    .btn:hover { background: var(--primary-dark); }
+    .btn:disabled { background: var(--text-muted); cursor: not-allowed; }
+    
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px;}
+    .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; font-family: inherit;}
+    
+    /* Progress Bar */
+    .progress-bg { background: var(--border); height: 20px; border-radius: 10px; width: 100%; overflow: hidden; margin-top: 10px;}
+    .progress-bar { background: var(--primary); height: 100%; width: 0%; transition: width 0.5s ease; }
+  </style>
+</head>
+<body>
+
+  <!-- ==========================================
+       APP CONTAINER & PAGES
+       ========================================== -->
+  <div id="app">
+    
+    <!-- HALAMAN: LOGIN -->
+    <div id="page-login" class="page active">
+      <div class="card" style="max-width: 350px; margin: 60px auto;">
+        <h2 style="text-align: center; color: var(--primary); margin-bottom: 25px;">HafalQuran</h2>
+        <form id="form-login">
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="login-username" required>
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="login-password" required>
+          </div>
+          <button type="submit" class="btn" id="btn-login">Masuk</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- HALAMAN: DASHBOARD (Semua Role) -->
+    <div id="page-dashboard" class="page">
+      <h2>Beranda</h2>
+      <p id="dashboard-welcome" style="margin-bottom: 20px; color: var(--text-muted);">Memuat informasi...</p>
+      <div id="dashboard-content">
+        <!-- Konten di-render dinamis oleh JS via fungsi renderPageContent() -->
+      </div>
+    </div>
+
+    <!-- HALAMAN: SETORAN (Hanya Ustadz & Santri) -->
+    <div id="page-setoran" class="page">
+      <h2>Setoran Hafalan</h2>
+      <div class="card" style="margin-top: 15px;">
+        <form id="form-setoran">
+          <!-- Placeholder Pemilihan Santri (Bisa diisi dinamis nanti) -->
+          <div class="form-group">
+            <label>Pilih Santri</label>
+            <select id="setoran-santri" required>
+              <option value="">-- Memuat Santri... --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Jenis Setoran</label>
+            <select id="setoran-jenis" required>
+              <option value="ziyadah">Ziyadah (Baru)</option>
+              <option value="murajaah">Murajaah (Ulangan)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Juz</label>
+            <select id="setoran-juz" required><option value="">-- Pilih Juz --</option></select>
+          </div>
+          <div class="form-group">
+            <label>Surah</label>
+            <select id="setoran-surah" required disabled><option value="">-- Pilih Surah --</option></select>
+          </div>
+          <div class="form-group">
+            <label>Ayat</label>
+            <select id="setoran-ayat" required disabled><option value="">-- Pilih Ayat --</option></select>
+          </div>
+          
+          <hr style="border: 0; border-top: 1px dashed var(--border); margin: 20px 0;">
+          <h4 style="margin-bottom: 15px; color: var(--primary);">Penilaian Bacaan</h4>
+          
+          <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <div style="flex: 1;"><label style="font-size: 12px;">Tajwid (1-100)</label><input type="number" id="nilai-tajwid" min="0" max="100" required style="width: 100%; padding: 8px;"></div>
+            <div style="flex: 1;"><label style="font-size: 12px;">Fashahah</label><input type="number" id="nilai-kelancaran" min="0" max="100" required style="width: 100%; padding: 8px;"></div>
+            <div style="flex: 1;"><label style="font-size: 12px;">Makhraj</label><input type="number" id="nilai-makhraj" min="0" max="100" required style="width: 100%; padding: 8px;"></div>
+          </div>
+          
+          <div class="form-group">
+            <label>Status Setoran</label>
+            <select id="setoran-status" required>
+              <option value="lulus">Lulus (Lanjut)</option>
+              <option value="mengulang">Mengulang (Belum Lancar)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Catatan Tambahan (Adab/Lainnya)</label>
+            <input type="text" id="setoran-catatan" placeholder="Opsional...">
+          </div>
+
+          <button type="submit" class="btn">Simpan Setoran</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- HALAMAN: PENGGUNA (Hanya Admin) -->
+    <div id="page-pengguna" class="page">
+      <h2>Manajemen Pengguna</h2>
+      
+      <!-- Form Tambah Pengguna (Disembunyikan default) -->
+      <div class="card" id="form-pengguna-container" style="display: none; margin-top: 15px; border-left: 4px solid var(--primary);">
+        <h3 style="margin-bottom: 15px;">Tambah Pengguna Baru</h3>
+        <form id="form-pengguna">
+          <div class="form-group"><label>Nama Lengkap</label><input type="text" id="pengguna-nama" required></div>
+          <div class="form-group"><label>Username</label><input type="text" id="pengguna-username" required></div>
+          <div class="form-group"><label>Password</label><input type="password" id="pengguna-password" required></div>
+          <div class="form-group">
+            <label>Peran (Role)</label>
+            <select id="pengguna-role" required onchange="document.getElementById('pengguna-target-container').style.display = this.value === 'santri' ? 'block' : 'none'">
+              <option value="santri">Santri</option>
+              <option value="ustadz">Ustadz</option>
+              <option value="superadmin">Superadmin</option>
+            </select>
+          </div>
+          <div class="form-group" id="pengguna-target-container">
+            <label>Target Juz (Pisahkan koma, cth: 30, 29)</label>
+            <input type="text" id="pengguna-target" placeholder="30, 29">
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button type="submit" class="btn">Simpan Pengguna</button>
+            <button type="button" class="btn" style="background: var(--text-muted);" onclick="document.getElementById('form-pengguna-container').style.display='none'">Batal</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card" style="margin-top: 15px;">
+        <button class="btn" style="width: auto; margin-bottom: 15px;" onclick="document.getElementById('form-pengguna-container').style.display='block'">+ Tambah Pengguna</button>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+            <thead><tr style="border-bottom: 2px solid var(--border);"><th style="padding: 10px;">Nama</th><th style="padding: 10px;">Username</th><th style="padding: 10px;">Role</th><th style="padding: 10px;">Status</th></tr></thead>
+            <tbody id="table-pengguna-body"><tr><td colspan="4" style="padding: 10px; text-align: center; color: var(--text-muted);">Memuat data...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- HALAMAN: HALAQAH (Hanya Admin) -->
+    <div id="page-halaqah" class="page">
+      <h2>Manajemen Halaqah</h2>
+      
+      <!-- Form Tambah Halaqah -->
+      <div class="card" id="form-halaqah-container" style="display: none; margin-top: 15px; border-left: 4px solid var(--primary);">
+        <h3 style="margin-bottom: 15px;">Buat Halaqah Baru</h3>
+        <form id="form-halaqah">
+          <div class="form-group"><label>Nama Halaqah</label><input type="text" id="halaqah-nama" placeholder="Contoh: Halaqah Abu Bakar" required></div>
+          <div class="form-group"><label>Ustadz Pengampu</label><select id="halaqah-ustadz" required><option value="">Memuat Ustadz...</option></select></div>
+          <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex: 1;"><label>Hari</label><input type="text" id="halaqah-hari" placeholder="Senin - Jumat" required></div>
+            <div class="form-group" style="flex: 1;"><label>Jam</label><input type="time" id="halaqah-jam" required></div>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button type="submit" class="btn">Simpan Halaqah</button>
+            <button type="button" class="btn" style="background: var(--text-muted);" onclick="document.getElementById('form-halaqah-container').style.display='none'">Batal</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Form Masukkan Santri -->
+      <div class="card" id="form-assign-container" style="display: none; margin-top: 15px; border-left: 4px solid var(--accent);">
+        <h3 style="margin-bottom: 15px;">Masukkan Santri ke Halaqah</h3>
+        <form id="form-assign">
+          <div class="form-group"><label>Pilih Halaqah</label><select id="assign-halaqah" required><option value="">Memuat...</option></select></div>
+          <div class="form-group"><label>Pilih Santri</label><select id="assign-santri" required><option value="">Memuat...</option></select></div>
+          <div style="display: flex; gap: 10px;">
+            <button type="submit" class="btn">Tambahkan</button>
+            <button type="button" class="btn" style="background: var(--text-muted);" onclick="document.getElementById('form-assign-container').style.display='none'">Batal</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card" style="margin-top: 15px;">
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+          <button class="btn" style="width: auto;" onclick="document.getElementById('form-halaqah-container').style.display='block'; document.getElementById('form-assign-container').style.display='none';">+ Buat Halaqah</button>
+          <button class="btn" style="width: auto; background: var(--accent);" onclick="document.getElementById('form-assign-container').style.display='block'; document.getElementById('form-halaqah-container').style.display='none';">+ Masukkan Santri</button>
+        </div>
+        <div id="halaqah-list-container">
+          <p style="color: var(--text-muted); font-size: 14px; text-align: center;">Memuat data halaqah...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- HALAMAN: LAPORAN (Hanya Admin) -->
+    <div id="page-laporan" class="page">
+      <h2>Laporan & Rapor PDF</h2>
+      <div class="card" style="margin-top: 15px;">
+        <form id="form-laporan">
+          <div class="form-group">
+            <label>Pilih Santri</label>
+            <select id="laporan-santri" required><option value="">-- Memuat Data --</option></select>
+          </div>
+          <button type="submit" class="btn" id="btn-generate-rapor">Buat Rapor Baru</button>
+        </form>
+        
+        <div id="laporan-result" style="display: none; margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--border);">
+          <h4 style="margin-bottom: 10px; color: var(--primary);">✅ Rapor Berhasil Dibuat!</h4>
+          <a id="link-doc" href="#" target="_blank" class="btn" style="display: block; text-align: center; margin-bottom: 10px; background: #4285F4; text-decoration: none;">📝 Buka Versi Editable (Google Doc)</a>
+          <a id="link-pdf" href="#" target="_blank" class="btn" style="display: block; text-align: center; background: #EA4335; text-decoration: none;">📄 Buka / Unduh Versi PDF</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- HALAMAN: PROFIL & PROGRES (Santri / Ustadz) -->
+    <div id="page-profil" class="page">
+      <h2>Profil Saya</h2>
+      <div class="card" style="margin-top: 15px;">
+        <h3 style="font-size: 16px;">Progres Hafalan (Target Juz)</h3>
+        <div class="progress-bg">
+          <div id="profil-progress-bar" class="progress-bar" style="width: 0%;"></div>
+        </div>
+        <p id="profil-progress-text" style="text-align: right; font-size: 12px; margin-top: 5px; color: var(--text-muted);">Memuat...</p>
+      </div>
+      <div class="card">
+        <h3 style="font-size: 16px; margin-bottom: 10px;">Riwayat Aktivitas Terakhir</h3>
+        <div id="profil-history-container">
+          <p style="color: var(--text-muted); font-size: 14px;">Memuat riwayat...</p>
+        </div>
+      </div>
+    </div>
+
+  </div> <!-- End #app -->
+
+  <!-- ==========================================
+       NAVIGATION CONTAINERS
+       ========================================== -->
+  <!-- Sidebar (Desktop - Superadmin) -->
+  <nav id="sidebar" class="sidebar">
+    <h3>HafalQuran</h3>
+    <a href="#dashboard">📊 Dashboard</a>
+    <a href="#pengguna">👥 Pengguna</a>
+    <a href="#halaqah">🕌 Halaqah</a>
+    <a href="#laporan">📄 Laporan (Rapor)</a>
+    <a href="#" onclick="logout()" style="margin-top: 50px; color: #ffcccc;">🚪 Keluar</a>
+  </nav>
+
+  <!-- Bottom Nav (Mobile - Ustadz & Santri) -->
+  <nav id="bottom-nav" class="bottom-nav">
+    <button onclick="location.hash='#dashboard'"><span>🏠</span> Beranda</button>
+    <button onclick="location.hash='#setoran'"><span>📖</span> Setoran</button>
+    <button onclick="location.hash='#profil'"><span>👤</span> Profil</button>
+    <button onclick="logout()"><span>🚪</span> Keluar</button>
+  </nav>
+
+  <!-- ==========================================
+       JAVASCRIPT SPA LOGIC
+       ========================================== -->
+  <script>
+    // URL Endpoint GAS (Injeksi dari Code.gs)
+    // PENTING: Jika di-host di GitHub Pages, ganti ini dengan URL Web App Anda!
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbyDh6h3kh_jzwJbAZNhel5tz83SKYf040pxkEq5irzMZMbiP_CIKV9lliWARjVUiathDA/exec';
+    
+    // PWA: Registrasi Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('Service Worker terdaftar!', reg))
+          .catch(err => console.log('Gagal mendaftar Service Worker', err));
+      });
+    }
+
+    // State Aplikasi
+    let state = {
+      user: JSON.parse(localStorage.getItem('hq_user')) || null, // Pulihkan dari memori browser
+      token: localStorage.getItem('hq_token') || null
+    };
+
+    // 1. API Client Fetch Wrapper
+    async function api(action, data = {}) {
+      // text/plain digunakan agar GAS tidak memicu preflight CORS options yang sering error
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action, token: state.token, data })
+      });
+      const json = await res.json();
+      
+      if (res.status === 401) throw new Error('Unauthorized');
+      if (json.error) throw new Error(json.error);
+      return json;
+    }
+
+    // 2. Sistem Routing SPA (Hash Based)
+    function navigate(hash) {
+      if (!state.token && hash !== '#login') {
+        location.hash = '#login';
+        return;
+      }
+      const path = hash ? hash.replace('#', '') : (state.token ? 'dashboard' : 'login');
+      
+      // Sembunyikan semua page, tampilkan page target
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      const targetPage = document.getElementById(`page-${path}`);
+      
+      if (targetPage) {
+        targetPage.classList.add('active');
+        renderPageContent(path); // Panggil fungsi spesifik page
+      } else {
+        document.getElementById('page-dashboard').classList.add('active');
+      }
+    }
+    window.addEventListener('hashchange', () => navigate(location.hash));
+
+    // 3. Layout & Role Manager
+    function initLayout(user) {
+      state.user = user;
+      document.body.className = ''; 
+      document.body.classList.add(`role-${user.role}`); // CSS akan otomatis menyesuaikan nav
+    }
+
+    function logout() {
+      state.token = null; state.user = null;
+      localStorage.removeItem('hq_token');
+      localStorage.removeItem('hq_user'); // Hapus data user saat logout
+      document.body.className = '';
+      location.hash = '#login';
+    }
+
+    // 4. Controller Halaman
+    function renderPageContent(page) {
+      if (page === 'dashboard' && state.user) {
+        document.getElementById('dashboard-welcome').innerText = `Ahlan Wa Sahlan, ${state.user.name} (${state.user.role})`;
+        loadDashboardData();
+      }
+      if (page === 'setoran') {
+        initSetoranForm();
+      }
+      if (page === 'pengguna' && state.user.role === 'superadmin') {
+        loadPenggunaData();
+      }
+      if (page === 'halaqah' && state.user.role === 'superadmin') {
+        loadHalaqahData();
+        initHalaqahFormOptions();
+      }
+      if (page === 'laporan' && state.user.role === 'superadmin') {
+        initLaporanForm();
+      }
+      if (page === 'profil') {
+        loadProfilData();
+      }
+    }
+
+    async function loadDashboardData() {
+      const container = document.getElementById('dashboard-content');
+      container.innerHTML = '<p style="color: var(--text-muted);">Mengambil data...</p>';
+      try {
+        const res = await api('dashboard.getData');
+        const stats = res.data;
+        let html = '';
+        
+        if (state.user.role === 'superadmin') {
+          html = `
+            <div style="display: flex; gap: 10px; text-align: center;">
+              <div class="card" style="flex: 1;"><h3 style="font-size: 24px; color: var(--primary);">${stats.total_santri}</h3><p style="font-size: 12px; color: var(--text-muted);">Santri</p></div>
+              <div class="card" style="flex: 1;"><h3 style="font-size: 24px; color: var(--primary);">${stats.total_ustadz}</h3><p style="font-size: 12px; color: var(--text-muted);">Ustadz</p></div>
+              <div class="card" style="flex: 1;"><h3 style="font-size: 24px; color: var(--primary);">${stats.total_halaqah}</h3><p style="font-size: 12px; color: var(--text-muted);">Halaqah</p></div>
+            </div>
+          `;
+        } else if (state.user.role === 'ustadz') {
+          html = `
+            <div class="card" style="text-align: center;">
+              <h3 style="font-size: 32px; color: var(--primary);">${stats.total_setoran_hari_ini}</h3>
+              <p style="color: var(--text-muted);">Setoran Diuji Hari Ini</p>
+            </div>
+          `;
+        } else if (state.user.role === 'santri') {
+          html = `
+            <div class="card"><h3>Total Setoran Saya</h3><p style="font-size: 20px; font-weight: bold; color: var(--primary);">${stats.total_setoran_saya}</p></div>
+            <div class="card"><h3>Status Target</h3><p style="font-size: 20px; font-weight: bold; color: var(--accent);">${stats.target_status}</p></div>
+          `;
+        }
+        container.innerHTML = html;
+      } catch (err) {
+        container.innerHTML = `<p style="color: red;">Gagal memuat data: ${err.message}</p>`;
+      }
+    }
+
+    async function loadPenggunaData() {
+      const tbody = document.getElementById('table-pengguna-body');
+      tbody.innerHTML = '<tr><td colspan="4" style="padding: 10px; text-align: center;">Memuat...</td></tr>';
+      try {
+        const res = await api('user.list');
+        tbody.innerHTML = res.data.map(u => `
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 10px;">${u.name}</td>
+            <td style="padding: 10px;">${u.username}</td>
+            <td style="padding: 10px;"><span style="background: var(--bg-color); padding: 4px 8px; border-radius: 4px; text-transform: uppercase;">${u.role}</span></td>
+            <td style="padding: 10px;">${u.is_active ? '<span style="color: green;">Aktif</span>' : '<span style="color: red;">Nonaktif</span>'}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color: red; text-align: center;">Gagal memuat data: ${err.message}</td></tr>`;
+      }
+    }
+
+    async function loadHalaqahData() {
+      const container = document.getElementById('halaqah-list-container');
+      container.innerHTML = '<p style="text-align: center;">Memuat...</p>';
+      try {
+        const res = await api('halaqah.list');
+        if (res.data.length === 0) {
+          container.innerHTML = '<p style="text-align: center; color: var(--text-muted);">Belum ada halaqah yang dibuat.</p>';
+          return;
+        }
+        container.innerHTML = res.data.map(h => `
+          <div style="border: 1px solid var(--border); border-radius: 6px; padding: 15px; margin-bottom: 10px;">
+            <h4 style="color: var(--primary); margin-bottom: 5px;">${h.name}</h4>
+            <p style="font-size: 12px; margin-bottom: 8px;"><strong>Pengampu:</strong> ${h.ustadz_name} | <strong>Jadwal:</strong> ${h.schedule}</p>
+            <p style="font-size: 12px; color: var(--text-muted);"><strong>Anggota (${h.members.length}):</strong> ${h.members.length > 0 ? h.members.join(', ') : 'Belum ada santri'}</p>
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = `<p style="color: red;">Gagal memuat data: ${err.message}</p>`;
+      }
+    }
+
+    async function initHalaqahFormOptions() {
+      try {
+        const resUstadz = await api('user.list', { role: 'ustadz' });
+        const resSantri = await api('user.list', { role: 'santri' });
+        const resHalaqah = await api('halaqah.list');
+        
+        const selectUstadz = document.getElementById('halaqah-ustadz');
+        const selectSantri = document.getElementById('assign-santri');
+        const selectHalaqah = document.getElementById('assign-halaqah');
+        
+        selectUstadz.innerHTML = '<option value="">-- Pilih Ustadz --</option>' + resUstadz.data.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+        selectSantri.innerHTML = '<option value="">-- Pilih Santri --</option>' + resSantri.data.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        selectHalaqah.innerHTML = '<option value="">-- Pilih Halaqah --</option>' + resHalaqah.data.map(h => `<option value="${h.id}">${h.name}</option>`).join('');
+      } catch(e) {
+        console.error("Gagal memuat opsi halaqah", e);
+      }
+    }
+
+    async function initLaporanForm() {
+      const santriSelect = document.getElementById('laporan-santri');
+      if (santriSelect.options.length <= 1) {
+        try {
+          const res = await api('user.list', { role: 'santri' });
+          santriSelect.innerHTML = '<option value="">-- Pilih Santri --</option>';
+          res.data.forEach(s => santriSelect.add(new Option(s.name, s.id)));
+        } catch (e) {
+          santriSelect.innerHTML = '<option value="">Gagal memuat daftar santri</option>';
+        }
+      }
+      document.getElementById('laporan-result').style.display = 'none';
+    }
+
+    async function loadProfilData() {
+      const progressFill = document.getElementById('profil-progress-bar');
+      const progressText = document.getElementById('profil-progress-text');
+      const historyContainer = document.getElementById('profil-history-container');
+
+      try {
+        const res = await api('profile.getData');
+        const data = res.data;
+
+        // Render Progress Bar
+        progressFill.style.width = data.progress + '%';
+        progressText.innerText = `${data.progress}% Tercapai (${data.target_juz.length} Target Juz)`;
+
+        // Render History Setoran
+        if (data.history.length === 0) {
+          historyContainer.innerHTML = '<p style="font-size: 14px; color: var(--text-muted);">Belum ada aktivitas setoran.</p>';
+        } else {
+          historyContainer.innerHTML = data.history.map(h => {
+            const dateObj = new Date(h.tanggal);
+            const dateStr = isNaN(dateObj) ? h.tanggal : dateObj.toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'});
+            const statusColor = h.status === 'lulus' ? 'green' : 'red';
+            
+            return `<div style="border-left: 3px solid var(--primary); padding-left: 10px; margin-bottom: 10px;">
+              <p style="font-size: 14px; font-weight: bold; text-transform: capitalize;">Setoran ${h.jenis} - Juz ${h.juz}</p>
+              <p style="font-size: 12px; color: var(--text-muted);"><span style="color: ${statusColor}; font-weight: bold; text-transform: capitalize;">${h.status}</span> • ${dateStr}</p>
+              ${h.catatan ? `<p style="font-size: 12px; margin-top: 4px; font-style: italic;">Catatan: ${h.catatan}</p>` : ''}
+            </div>`;
+          }).join('');
+        }
+      } catch (err) {
+        historyContainer.innerHTML = `<p style="color: red;">Gagal memuat data profil: ${err.message}</p>`;
+      }
+    }
+
+    // ==========================================
+    // 5. MODUL SETORAN (CASCADING DROPDOWN)
+    // ==========================================
+    
+    // Metadata Lengkap 114 Surah (ID, Nama, Jumlah Ayat)
+    const SURAH_META = [
+      { id: 1, name: "Al-Fatihah", ayat: 7 },
+      { id: 2, name: "Al-Baqarah", ayat: 286 },
+      { id: 3, name: "Ali 'Imran", ayat: 200 },
+      { id: 4, name: "An-Nisa'", ayat: 176 },
+      { id: 5, name: "Al-Ma'idah", ayat: 120 },
+      { id: 6, name: "Al-An'am", ayat: 165 },
+      { id: 7, name: "Al-A'raf", ayat: 206 },
+      { id: 8, name: "Al-Anfal", ayat: 75 },
+      { id: 9, name: "At-Taubah", ayat: 129 },
+      { id: 10, name: "Yunus", ayat: 109 },
+      { id: 11, name: "Hud", ayat: 123 },
+      { id: 12, name: "Yusuf", ayat: 111 },
+      { id: 13, name: "Ar-Ra'd", ayat: 43 },
+      { id: 14, name: "Ibrahim", ayat: 52 },
+      { id: 15, name: "Al-Hijr", ayat: 99 },
+      { id: 16, name: "An-Nahl", ayat: 128 },
+      { id: 17, name: "Al-Isra'", ayat: 111 },
+      { id: 18, name: "Al-Kahf", ayat: 110 },
+      { id: 19, name: "Maryam", ayat: 98 },
+      { id: 20, name: "Ta-Ha", ayat: 135 },
+      { id: 21, name: "Al-Anbiya'", ayat: 112 },
+      { id: 22, name: "Al-Hajj", ayat: 78 },
+      { id: 23, name: "Al-Mu'minun", ayat: 118 },
+      { id: 24, name: "An-Nur", ayat: 64 },
+      { id: 25, name: "Al-Furqan", ayat: 77 },
+      { id: 26, name: "Asy-Syu'ara'", ayat: 227 },
+      { id: 27, name: "An-Naml", ayat: 93 },
+      { id: 28, name: "Al-Qasas", ayat: 88 },
+      { id: 29, name: "Al-'Ankabut", ayat: 69 },
+      { id: 30, name: "Ar-Rum", ayat: 60 },
+      { id: 31, name: "Luqman", ayat: 34 },
+      { id: 32, name: "As-Sajdah", ayat: 30 },
+      { id: 33, name: "Al-Ahzab", ayat: 73 },
+      { id: 34, name: "Saba'", ayat: 54 },
+      { id: 35, name: "Fatir", ayat: 45 },
+      { id: 36, name: "Ya-Sin", ayat: 83 },
+      { id: 37, name: "As-Saffat", ayat: 182 },
+      { id: 38, name: "Sad", ayat: 88 },
+      { id: 39, name: "Az-Zumar", ayat: 75 },
+      { id: 40, name: "Ghafir", ayat: 85 },
+      { id: 41, name: "Fussilat", ayat: 54 },
+      { id: 42, name: "Asy-Syura", ayat: 53 },
+      { id: 43, name: "Az-Zukhruf", ayat: 89 },
+      { id: 44, name: "Ad-Dukhan", ayat: 59 },
+      { id: 45, name: "Al-Jasiyah", ayat: 37 },
+      { id: 46, name: "Al-Ahqaf", ayat: 35 },
+      { id: 47, name: "Muhammad", ayat: 38 },
+      { id: 48, name: "Al-Fath", ayat: 29 },
+      { id: 49, name: "Al-Hujurat", ayat: 18 },
+      { id: 50, name: "Qaf", ayat: 45 },
+      { id: 51, name: "Az-Zariyat", ayat: 60 },
+      { id: 52, name: "At-Tur", ayat: 49 },
+      { id: 53, name: "An-Najm", ayat: 62 },
+      { id: 54, name: "Al-Qamar", ayat: 55 },
+      { id: 55, name: "Ar-Rahman", ayat: 78 },
+      { id: 56, name: "Al-Waqi'ah", ayat: 96 },
+      { id: 57, name: "Al-Hadid", ayat: 29 },
+      { id: 58, name: "Al-Mujadilah", ayat: 22 },
+      { id: 59, name: "Al-Hasyr", ayat: 24 },
+      { id: 60, name: "Al-Mumtahanah", ayat: 13 },
+      { id: 61, name: "As-Saff", ayat: 14 },
+      { id: 62, name: "Al-Jumu'ah", ayat: 11 },
+      { id: 63, name: "Al-Munafiqun", ayat: 11 },
+      { id: 64, name: "At-Tagabun", ayat: 18 },
+      { id: 65, name: "At-Talaq", ayat: 12 },
+      { id: 66, name: "At-Tahrim", ayat: 12 },
+      { id: 67, name: "Al-Mulk", ayat: 30 },
+      { id: 68, name: "Al-Qalam", ayat: 52 },
+      { id: 69, name: "Al-Haqqah", ayat: 52 },
+      { id: 70, name: "Al-Ma'arij", ayat: 44 },
+      { id: 71, name: "Nuh", ayat: 28 },
+      { id: 72, name: "Al-Jinn", ayat: 28 },
+      { id: 73, name: "Al-Muzzammil", ayat: 20 },
+      { id: 74, name: "Al-Muddassir", ayat: 56 },
+      { id: 75, name: "Al-Qiyamah", ayat: 40 },
+      { id: 76, name: "Al-Insan", ayat: 31 },
+      { id: 77, name: "Al-Mursalat", ayat: 50 },
+      { id: 78, name: "An-Naba'", ayat: 40 },
+      { id: 79, name: "An-Nazi'at", ayat: 46 },
+      { id: 80, name: "'Abasa", ayat: 42 },
+      { id: 81, name: "At-Takwir", ayat: 29 },
+      { id: 82, name: "Al-Infitar", ayat: 19 },
+      { id: 83, name: "Al-Mutaffifin", ayat: 36 },
+      { id: 84, name: "Al-Insyiqaq", ayat: 25 },
+      { id: 85, name: "Al-Buruj", ayat: 22 },
+      { id: 86, name: "At-Tariq", ayat: 17 },
+      { id: 87, name: "Al-A'la", ayat: 19 },
+      { id: 88, name: "Al-Ghasyiyah", ayat: 26 },
+      { id: 89, name: "Al-Fajr", ayat: 30 },
+      { id: 90, name: "Al-Balad", ayat: 20 },
+      { id: 91, name: "Asy-Syams", ayat: 15 },
+      { id: 92, name: "Al-Lail", ayat: 21 },
+      { id: 93, name: "Ad-Duha", ayat: 11 },
+      { id: 94, name: "Asy-Syarh", ayat: 8 },
+      { id: 95, name: "At-Tin", ayat: 8 },
+      { id: 96, name: "Al-'Alaq", ayat: 19 },
+      { id: 97, name: "Al-Qadr", ayat: 5 },
+      { id: 98, name: "Al-Bayyinah", ayat: 8 },
+      { id: 99, name: "Az-Zalzalah", ayat: 8 },
+      { id: 100, name: "Al-'Adiyat", ayat: 11 },
+      { id: 101, name: "Al-Qari'ah", ayat: 11 },
+      { id: 102, name: "At-Takasur", ayat: 8 },
+      { id: 103, name: "Al-'Asr", ayat: 3 },
+      { id: 104, name: "Al-Humazah", ayat: 9 },
+      { id: 105, name: "Al-Fil", ayat: 5 },
+      { id: 106, name: "Quraisy", ayat: 4 },
+      { id: 107, name: "Al-Ma'un", ayat: 7 },
+      { id: 108, name: "Al-Kausar", ayat: 3 },
+      { id: 109, name: "Al-Kafirun", ayat: 6 },
+      { id: 110, name: "An-Nasr", ayat: 3 },
+      { id: 111, name: "Al-Lahab", ayat: 5 },
+      { id: 112, name: "Al-Ikhlas", ayat: 4 },
+      { id: 113, name: "Al-Falaq", ayat: 5 },
+      { id: 114, name: "An-Nas", ayat: 6 }
+    ];
+
+    // Mapping ID Surah berdasarkan Juz (Indeks 1 s/d 30)
+    const JUZ_SURAH_MAPPING = {
+      1: [1, 2], 2: [2], 3: [2, 3], 4: [3, 4], 5: [4],
+      6: [4, 5], 7: [5, 6], 8: [6, 7], 9: [7, 8], 10: [8, 9],
+      11: [9, 10, 11], 12: [11, 12], 13: [12, 13, 14], 14: [15, 16],
+      15: [17, 18], 16: [18, 19, 20], 17: [21, 22], 18: [23, 24, 25],
+      19: [25, 26, 27], 20: [27, 28, 29], 21: [29, 30, 31, 32, 33],
+      22: [33, 34, 35, 36], 23: [36, 37, 38, 39], 24: [39, 40, 41],
+      25: [41, 42, 43, 44, 45], 26: [46, 47, 48, 49, 50, 51],
+      27: [51, 52, 53, 54, 55, 56, 57], 28: [58, 59, 60, 61, 62, 63, 64, 65, 66],
+      29: [67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77],
+      30: [78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114]
+    };
+
+    async function initSetoranForm() {
+      const juzSelect = document.getElementById('setoran-juz');
+      const surahSelect = document.getElementById('setoran-surah');
+      const ayatSelect = document.getElementById('setoran-ayat');
+      const santriSelect = document.getElementById('setoran-santri');
+
+      // A. Populate Daftar Santri dari API (Hanya ambil jika belum ada)
+      if (santriSelect.options.length <= 1) {
+        try {
+          const res = await api('user.list', { role: 'santri' });
+          santriSelect.innerHTML = '<option value="">-- Pilih Santri --</option>';
+          res.data.forEach(s => santriSelect.add(new Option(s.name, s.id)));
+        } catch (e) {
+          santriSelect.innerHTML = '<option value="">Gagal memuat daftar santri</option>';
+        }
+      }
+
+      juzSelect.innerHTML = '<option value="">-- Pilih Juz --</option>';
+      
+      // Fallback: Jika target santri kosong, tampilkan seluruh 30 Juz
+      const targetJuz = state.user?.target_juz || Array.from({length: 30}, (_, i) => i + 1); 
+      
+      targetJuz.forEach(juz => {
+        if (JUZ_SURAH_MAPPING[juz]) juzSelect.add(new Option(`Juz ${juz}`, juz));
+      });
+
+      // B. Event Listener: Saat Juz dipilih -> Isi Opsi Surah
+      juzSelect.onchange = function() {
+        surahSelect.innerHTML = '<option value="">-- Pilih Surah --</option>';
+        ayatSelect.innerHTML = '<option value="">-- Pilih Ayat --</option>';
+        surahSelect.disabled = true; ayatSelect.disabled = true;
+
+        if (!this.value) return;
+        
+        // Ambil ID surah yang ada di Juz terpilih lalu cari meta-datanya
+        const validSurahs = JUZ_SURAH_MAPPING[this.value] || [];
+        validSurahs.forEach(surahId => {
+          const surah = SURAH_META.find(s => s.id === surahId);
+          if (surah) surahSelect.add(new Option(`${surah.id}. ${surah.name}`, surah.id));
+        });
+        
+        surahSelect.disabled = false;
+      };
+
+      // C. Event Listener: Saat Surah dipilih -> Isi Opsi Ayat
+      surahSelect.onchange = function() {
+        ayatSelect.innerHTML = '<option value="">-- Pilih Ayat --</option>';
+        ayatSelect.disabled = true;
+
+        if (!this.value) return;
+        
+        const surah = SURAH_META.find(s => s.id == this.value);
+        if (surah) {
+          for (let i = 1; i <= surah.ayat; i++) ayatSelect.add(new Option(`Ayat ${i}`, i));
+          ayatSelect.disabled = false;
+        }
+      };
+    }
+
+    // ==========================================
+    // 6. EVENT LISTENERS (FORM SUBMISSIONS)
+    // ==========================================
+    
+    // A. Event Listener Form Login
+    document.getElementById('form-login').addEventListener('submit', async (e) => {
+      e.preventDefault(); // Mencegah page reload
+      const btn = document.getElementById('btn-login');
+      btn.disabled = true; btn.innerText = 'Memuat...';
+      
+      try {
+        const username = document.getElementById('login-username').value;
+        const password = document.getElementById('login-password').value;
+        
+        const res = await api('auth.login', { username, password });
+        if (res.status === 'success') {
+          state.token = res.token;
+          localStorage.setItem('hq_token', res.token);
+          localStorage.setItem('hq_user', JSON.stringify(res.user)); // Simpan data user ke memori
+          initLayout(res.user);
+          location.hash = '#dashboard';
+        }
+      } catch (err) {
+        alert('Gagal Login: ' + err.message);
+      } finally {
+        btn.disabled = false; btn.innerText = 'Masuk';
+      }
+    });
+
+    // B. Event Listener Form Setoran
+    document.getElementById('form-setoran').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector('button[type="submit"]');
+      const originalText = btn.innerText;
+      btn.disabled = true; btn.innerText = 'Menyimpan...';
+
+      try {
+        // Kumpulkan data dari DOM
+        const payload = {
+          santri_id: document.getElementById('setoran-santri').value,
+          jenis: document.getElementById('setoran-jenis').value,
+          juz: document.getElementById('setoran-juz').value,
+          surah: document.getElementById('setoran-surah').value,
+          ayat: document.getElementById('setoran-ayat').value,
+          nilai_tajwid: parseInt(document.getElementById('nilai-tajwid').value),
+          nilai_kelancaran: parseInt(document.getElementById('nilai-kelancaran').value),
+          nilai_makhraj: parseInt(document.getElementById('nilai-makhraj').value),
+          status: document.getElementById('setoran-status').value,
+          catatan: document.getElementById('setoran-catatan').value
+        };
+
+        const res = await api('setoran.create', payload);
+        if (res.status === 'success') {
+          alert('Alhamdulillah, setoran berhasil dicatat!');
+          e.target.reset(); // Kosongkan form kembali
+          document.getElementById('setoran-surah').disabled = true;
+          document.getElementById('setoran-ayat').disabled = true;
+        }
+      } catch (err) {
+        alert('Gagal menyimpan: ' + err.message);
+      } finally {
+        btn.disabled = false; btn.innerText = originalText;
+      }
+    });
+
+    // C. Event Listener Form Tambah Pengguna
+    document.getElementById('form-pengguna').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector('button[type="submit"]');
+      const originalText = btn.innerText;
+      btn.disabled = true; btn.innerText = 'Menyimpan...';
+
+      try {
+        const payload = {
+          name: document.getElementById('pengguna-nama').value,
+          username: document.getElementById('pengguna-username').value,
+          password: document.getElementById('pengguna-password').value,
+          role: document.getElementById('pengguna-role').value,
+          target_juz: document.getElementById('pengguna-target').value
+        };
+        
+        const res = await api('user.create', payload);
+        if (res.status === 'success') {
+          alert('Pengguna berhasil ditambahkan!');
+          e.target.reset();
+          document.getElementById('form-pengguna-container').style.display = 'none';
+          loadPenggunaData(); // Reload tabel
+        }
+      } catch (err) {
+        alert('Gagal menambah pengguna: ' + err.message);
+      } finally {
+        btn.disabled = false; btn.innerText = originalText;
+      }
+    });
+
+    // D. Event Listener Form Rapor/Laporan
+    document.getElementById('form-laporan').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btn-generate-rapor');
+      const originalText = btn.innerText;
+      
+      btn.disabled = true; btn.innerText = 'Membangun Dokumen...';
+      document.getElementById('laporan-result').style.display = 'none';
+
+      try {
+        const santri_id = document.getElementById('laporan-santri').value;
+        const res = await api('laporan.generate', { santri_id });
+        
+        if (res.status === 'success') {
+          document.getElementById('link-doc').href = res.data.docUrl;
+          document.getElementById('link-pdf').href = res.data.pdfUrl;
+          document.getElementById('laporan-result').style.display = 'block';
+        }
+      } catch (err) {
+        alert('Gagal mencetak rapor: ' + err.message);
+      } finally {
+        btn.disabled = false; btn.innerText = originalText;
+      }
+    });
+    
+    // E. Event Listener Form Tambah Halaqah
+    document.getElementById('form-halaqah').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector('button[type="submit"]');
+      const originalText = btn.innerText;
+      btn.disabled = true; btn.innerText = 'Menyimpan...';
+
+      try {
+        const payload = {
+          name: document.getElementById('halaqah-nama').value,
+          ustadz_id: document.getElementById('halaqah-ustadz').value,
+          day: document.getElementById('halaqah-hari').value,
+          time: document.getElementById('halaqah-jam').value
+        };
+        const res = await api('halaqah.create', payload);
+        if (res.status === 'success') {
+          alert('Halaqah berhasil dibuat!');
+          e.target.reset();
+          document.getElementById('form-halaqah-container').style.display = 'none';
+          loadHalaqahData(); initHalaqahFormOptions();
+        }
+      } catch (err) {
+        alert('Gagal membuat halaqah: ' + err.message);
+      } finally {
+        btn.disabled = false; btn.innerText = originalText;
+      }
+    });
+
+    // F. Event Listener Form Assign Santri
+    document.getElementById('form-assign').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector('button[type="submit"]');
+      const originalText = btn.innerText;
+      btn.disabled = true; btn.innerText = 'Menambahkan...';
+
+      try {
+        const payload = {
+          halaqah_id: document.getElementById('assign-halaqah').value,
+          santri_id: document.getElementById('assign-santri').value
+        };
+        const res = await api('halaqah.assign', payload);
+        if (res.status === 'success') {
+          alert('Santri berhasil ditambahkan ke halaqah!');
+          e.target.reset();
+          loadHalaqahData();
+        }
+      } catch (err) {
+        alert('Gagal menambahkan santri: ' + err.message);
+      } finally {
+        btn.disabled = false; btn.innerText = originalText;
+      }
+    });
+
+    // Jalankan inisialisasi halaman saat pertama kali dimuat atau di-refresh
+    window.addEventListener('DOMContentLoaded', () => {
+      if (state.user) initLayout(state.user); // Kembalikan layout navigasi sesuai Role
+      navigate(location.hash); // Render halaman terakhir
+    });
+  </script>
+</body>
+</html>
