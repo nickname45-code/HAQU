@@ -7,6 +7,7 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1B6B3A">
   <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="icon" href="logo.png" type="image/png">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
@@ -102,6 +103,14 @@
     /* Progress Bar */
     .progress-bg { background: var(--border); height: 20px; border-radius: 10px; width: 100%; overflow: hidden; margin-top: 10px;}
     .progress-bar { background: var(--primary); height: 100%; width: 0%; transition: width 0.5s ease; }
+
+    /* Print Style for QR Card */
+    @media print {
+      body * { visibility: hidden; }
+      #print-area, #print-area * { visibility: visible; }
+      #print-area { position: absolute; left: 0; top: 0; width: 100%; max-width: 100%; border: none; box-shadow: none; margin: 0; padding: 0; }
+      #print-area button { display: none !important; }
+    }
   </style>
 </head>
 <body>
@@ -275,6 +284,17 @@
         <div id="absensi-list" style="margin-top: 20px;"></div>
         <button class="btn" id="btn-submit-absensi" style="margin-top: 15px; display: none;" onclick="submitBulkAbsensi()">Simpan Absensi Massal</button>
       </div>
+      
+      <!-- Card Riwayat Absensi -->
+      <div class="card" style="margin-top: 15px;">
+        <h3 style="font-size: 16px; margin-bottom: 10px;">Riwayat Absensi Terakhir</h3>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+            <thead><tr style="border-bottom: 2px solid var(--border);"><th style="padding: 10px;">Tanggal</th><th style="padding: 10px;">Halaqah</th><th style="padding: 10px;">Jml Data</th><th style="padding: 10px;">Aksi</th></tr></thead>
+            <tbody id="table-absensi-history"><tr><td colspan="4" style="padding: 10px; text-align: center; color: var(--text-muted);">Memuat riwayat...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- HALAMAN: PENGGUNA (Hanya Admin) -->
@@ -283,8 +303,9 @@
       
       <!-- Form Tambah Pengguna (Disembunyikan default) -->
       <div class="card" id="form-pengguna-container" style="display: none; margin-top: 15px; border-left: 4px solid var(--primary);">
-        <h3 style="margin-bottom: 15px;">Tambah Pengguna Baru</h3>
+        <h3 id="title-form-pengguna" style="margin-bottom: 15px;">Tambah Pengguna Baru</h3>
         <form id="form-pengguna">
+          <input type="hidden" id="pengguna-id">
           <div class="form-group"><label>Nama Lengkap</label><input type="text" id="pengguna-nama" required></div>
           <div class="form-group"><label>Username</label><input type="text" id="pengguna-username" required></div>
           <div class="form-group"><label>Password</label><input type="password" id="pengguna-password" required></div>
@@ -311,8 +332,8 @@
         <button class="btn" style="width: auto; margin-bottom: 15px;" onclick="document.getElementById('form-pengguna-container').style.display='block'">+ Tambah Pengguna</button>
         <div style="overflow-x: auto;">
           <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
-            <thead><tr style="border-bottom: 2px solid var(--border);"><th style="padding: 10px;">Nama</th><th style="padding: 10px;">Username</th><th style="padding: 10px;">Role</th><th style="padding: 10px;">Status</th></tr></thead>
-            <tbody id="table-pengguna-body"><tr><td colspan="4" style="padding: 10px; text-align: center; color: var(--text-muted);">Memuat data...</td></tr></tbody>
+            <thead><tr style="border-bottom: 2px solid var(--border);"><th style="padding: 10px;">Nama</th><th style="padding: 10px;">Username</th><th style="padding: 10px;">Role</th><th style="padding: 10px;">Status</th><th style="padding: 10px;">Aksi</th></tr></thead>
+            <tbody id="table-pengguna-body"><tr><td colspan="5" style="padding: 10px; text-align: center; color: var(--text-muted);">Memuat data...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -324,8 +345,9 @@
       
       <!-- Form Tambah Halaqah -->
       <div class="card" id="form-halaqah-container" style="display: none; margin-top: 15px; border-left: 4px solid var(--primary);">
-        <h3 style="margin-bottom: 15px;">Buat Halaqah Baru</h3>
+        <h3 id="title-form-halaqah" style="margin-bottom: 15px;">Buat Halaqah Baru</h3>
         <form id="form-halaqah">
+          <input type="hidden" id="halaqah-id">
           <div class="form-group"><label>Nama Halaqah</label><input type="text" id="halaqah-nama" placeholder="Contoh: Halaqah Abu Bakar" required></div>
           <div class="form-group"><label>Ustadz Pengampu</label><select id="halaqah-ustadz" required><option value="">Memuat Ustadz...</option></select></div>
           <div style="display: flex; gap: 10px;">
@@ -425,6 +447,15 @@
         </div>
       </div>
       
+      <div class="card" style="margin-top: 15px;">
+        <h3 style="font-size: 16px; margin-bottom: 10px;">🔒 Keamanan Akun</h3>
+        <form id="form-ubah-password">
+          <div class="form-group"><label>Password Lama</label><input type="password" id="profil-pass-lama" required style="padding: 10px;"></div>
+          <div class="form-group"><label>Password Baru</label><input type="password" id="profil-pass-baru" required style="padding: 10px;"></div>
+          <button type="submit" class="btn">Ubah Password</button>
+        </form>
+      </div>
+
       <div class="card" style="margin-top: 15px; text-align: center; max-width: 350px; margin-left: auto; margin-right: auto; padding: 30px;" id="print-area">
         <img src="logo.png" alt="Logo" style="width: 60px; margin-bottom: 10px; border-radius: 12px;">
         <h3 style="color: var(--primary); font-size: 18px; margin-bottom: 5px;">HAQU</h3><p style="font-size: 12px; color: var(--text-muted); margin-bottom: 20px;">Kartu Setoran Santri</p>
@@ -443,6 +474,7 @@
   <nav id="sidebar" class="sidebar">
     <h3>HAQU</h3>
     <a href="#dashboard">📊 Dashboard</a>
+    <a href="#scan">📷 Scan QR</a>
     <a href="#pengguna">👥 Pengguna</a>
     <a href="#halaqah">🕌 Halaqah</a>
     <a href="#absensi">📋 Absensi Kelas</a>
@@ -594,10 +626,16 @@
               <div class="card" style="flex: 1;"><h3 style="font-size: 24px; color: var(--primary);">${stats.total_ustadz}</h3><p style="font-size: 12px; color: var(--text-muted);">Ustadz</p></div>
               <div class="card" style="flex: 1;"><h3 style="font-size: 24px; color: var(--primary);">${stats.total_halaqah}</h3><p style="font-size: 12px; color: var(--text-muted);">Halaqah</p></div>
             </div>
-        <div class="card" style="margin-top: 15px;">
-          <h3>Grafik Setoran 14 Hari Terakhir</h3>
-          <canvas id="chart-setoran" style="width: 100%; height: 250px;"></canvas>
-        </div>
+            <div style="display: flex; gap: 15px; margin-top: 15px; flex-wrap: wrap;">
+              <div class="card" style="flex: 2; min-width: 300px;">
+                <h3 style="margin-bottom: 10px; font-size: 16px;">Grafik Setoran 14 Hari Terakhir</h3>
+                <div style="position: relative; height: 250px;"><canvas id="chart-setoran"></canvas></div>
+              </div>
+              <div class="card" style="flex: 1; min-width: 250px;">
+                <h3 style="margin-bottom: 10px; font-size: 16px;">Rasio Kelulusan</h3>
+                <div style="position: relative; height: 250px;"><canvas id="chart-pie-setoran"></canvas></div>
+              </div>
+            </div>
           `;
         } else if (state.user.role === 'ustadz') {
           html = `
@@ -626,28 +664,80 @@
           },
           options: { responsive: true, maintainAspectRatio: false }
         });
+        
+        if (chartInstances['pie']) chartInstances['pie'].destroy();
+        const ctxPie = document.getElementById('chart-pie-setoran').getContext('2d');
+        chartInstances['pie'] = new Chart(ctxPie, {
+          type: 'pie',
+          data: {
+            labels: ['Lulus', 'Mengulang'],
+            datasets: [{ data: [stats.pieChart.lulus, stats.pieChart.mengulang], backgroundColor: ['#1B6B3A', '#E74C3C'] }]
+          },
+          options: { responsive: true, maintainAspectRatio: false }
+        });
       }
-      } catch (err) {
+    } catch (err) {
         container.innerHTML = `<p style="color: red;">Gagal memuat data: ${err.message}</p>`;
       }
     }
 
     async function loadPenggunaData() {
       const tbody = document.getElementById('table-pengguna-body');
-      tbody.innerHTML = '<tr><td colspan="4" style="padding: 10px; text-align: center;">Memuat...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" style="padding: 10px; text-align: center;">Memuat...</td></tr>';
       try {
         const res = await api('user.list');
+        window.usersDataCache = res.data; // Simpan untuk fungsi Edit
         tbody.innerHTML = res.data.map(u => `
           <tr style="border-bottom: 1px solid var(--border);">
             <td style="padding: 10px;">${u.name}</td>
             <td style="padding: 10px;">${u.username}</td>
             <td style="padding: 10px;"><span style="background: var(--bg-color); padding: 4px 8px; border-radius: 4px; text-transform: uppercase;">${u.role}</span></td>
             <td style="padding: 10px;">${u.is_active ? '<span style="color: green;">Aktif</span>' : '<span style="color: red;">Nonaktif</span>'}</td>
+            <td style="padding: 10px; white-space: nowrap;">
+              <button class="btn btn-outline" style="padding: 4px 8px; font-size: 12px; width: auto; margin-right: 4px;" title="Edit Pengguna" onclick="editPengguna('${u.id}')">✏️</button>
+              <button class="btn btn-outline" style="padding: 4px 8px; font-size: 12px; width: auto; margin-right: 4px;" title="Reset Sandi" onclick="resetSandiPengguna('${u.id}')">🔐</button>
+              <button class="btn btn-outline" style="padding: 4px 8px; font-size: 12px; width: auto; border-color: red; color: red;" title="Hapus Permanen" onclick="hapusPengguna('${u.id}')">🗑️</button>
+            </td>
           </tr>
         `).join('');
       } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="4" style="color: red; text-align: center;">Gagal memuat data: ${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" style="color: red; text-align: center;">Gagal memuat data: ${err.message}</td></tr>`;
       }
+    }
+    
+    function editPengguna(id) {
+      const u = window.usersDataCache.find(x => x.id === id);
+      if (!u) return;
+      document.getElementById('pengguna-id').value = u.id;
+      document.getElementById('pengguna-nama').value = u.name;
+      document.getElementById('pengguna-username').value = u.username;
+      document.getElementById('pengguna-role').value = u.role;
+      document.getElementById('pengguna-target').value = u.target_juz ? JSON.parse(u.target_juz).join(', ') : '';
+      document.getElementById('pengguna-target-container').style.display = u.role === 'santri' ? 'block' : 'none';
+      
+      document.getElementById('pengguna-password').required = false; 
+      document.getElementById('pengguna-password').placeholder = "(Kosongkan jika tidak diubah)";
+      document.getElementById('title-form-pengguna').innerText = 'Edit Data Pengguna';
+      
+      document.getElementById('form-pengguna-container').style.display = 'block';
+      window.scrollTo(0, document.getElementById('form-pengguna-container').offsetTop);
+    }
+    
+    async function hapusPengguna(id) {
+      if (!confirm('Hapus pengguna ini secara permanen? Seluruh riwayatnya bisa hilang!')) return;
+      try {
+        await api('user.delete', { id });
+        alert('Pengguna berhasil dihapus.');
+        loadPenggunaData();
+      } catch(e) { alert('Gagal: ' + e.message); }
+    }
+
+    async function resetSandiPengguna(target_user_id) {
+      if (!confirm('Apakah Anda yakin ingin mereset sandi pengguna ini?')) return;
+      try {
+        const res = await api('user.resetPassword', { target_user_id });
+        if (res.status === 'success') alert(res.message);
+      } catch(e) { alert('Gagal: ' + e.message); }
     }
 
     async function loadHalaqahData() {
@@ -655,20 +745,56 @@
       container.innerHTML = '<p style="text-align: center;">Memuat...</p>';
       try {
         const res = await api('halaqah.list');
+        window.halaqahDataCache = res.data;
         if (res.data.length === 0) {
           container.innerHTML = '<p style="text-align: center; color: var(--text-muted);">Belum ada halaqah yang dibuat.</p>';
           return;
         }
-        container.innerHTML = res.data.map(h => `
-          <div style="border: 1px solid var(--border); border-radius: 6px; padding: 15px; margin-bottom: 10px;">
+        container.innerHTML = res.data.map(h => {
+          const membersHtml = h.members.map(m => 
+            `<span style="display:inline-block; background:var(--bg-color); padding:2px 8px; border-radius:12px; margin:2px; font-size:12px;">${m.name} <strong style="color:red;cursor:pointer;margin-left:4px;" title="Keluarkan Santri" onclick="keluarkanSantri('${h.id}', '${m.id}')">&times;</strong></span>`
+          ).join('');
+          
+          return `
+          <div style="border: 1px solid var(--border); border-radius: 6px; padding: 15px; margin-bottom: 10px; position:relative;">
+            <div style="position:absolute; right:15px; top:15px;">
+              <button class="btn btn-outline" style="padding:4px 8px; font-size:12px; width:auto;" onclick="editHalaqah('${h.id}')">✏️</button>
+              <button class="btn btn-outline" style="padding:4px 8px; font-size:12px; width:auto; border-color:red; color:red;" onclick="hapusHalaqah('${h.id}')">🗑️</button>
+            </div>
             <h4 style="color: var(--primary); margin-bottom: 5px;">${h.name}</h4>
             <p style="font-size: 12px; margin-bottom: 8px;"><strong>Pengampu:</strong> ${h.ustadz_name} | <strong>Jadwal:</strong> ${h.schedule}</p>
-            <p style="font-size: 12px; color: var(--text-muted);"><strong>Anggota (${h.members.length}):</strong> ${h.members.length > 0 ? h.members.join(', ') : 'Belum ada santri'}</p>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 5px;"><strong>Anggota (${h.members.length}):</strong></p>
+            <div>${membersHtml || '<span style="font-size:12px; color:var(--text-muted);">Belum ada santri di grup ini</span>'}</div>
           </div>
-        `).join('');
+        `}).join('');
       } catch (err) {
         container.innerHTML = `<p style="color: red;">Gagal memuat data: ${err.message}</p>`;
       }
+    }
+
+    function editHalaqah(id) {
+      const h = window.halaqahDataCache.find(x => x.id === id);
+      if (!h) return;
+      document.getElementById('halaqah-id').value = h.id;
+      document.getElementById('halaqah-nama').value = h.name;
+      document.getElementById('halaqah-ustadz').value = h.ustadz_id;
+      document.getElementById('halaqah-hari').value = h.schedule_day;
+      document.getElementById('halaqah-jam').value = h.schedule_time;
+      document.getElementById('title-form-halaqah').innerText = 'Edit Data Halaqah';
+      
+      document.getElementById('form-halaqah-container').style.display = 'block';
+      document.getElementById('form-assign-container').style.display = 'none';
+      window.scrollTo(0, document.getElementById('form-halaqah-container').offsetTop);
+    }
+
+    async function hapusHalaqah(id) {
+      if (!confirm('Hapus halaqah ini? Data absensi terkait mungkin akan kehilangan referensi nama halaqah.')) return;
+      try { await api('halaqah.delete', { id }); alert('Halaqah dihapus.'); loadHalaqahData(); initHalaqahFormOptions(); } catch(e) { alert('Gagal: ' + e.message); }
+    }
+
+    async function keluarkanSantri(halaqah_id, santri_id) {
+      if (!confirm('Keluarkan santri ini dari kelompok halaqah?')) return;
+      try { await api('halaqah.unassign', { halaqah_id, santri_id }); loadHalaqahData(); } catch(e) { alert('Gagal: ' + e.message); }
     }
 
     async function initHalaqahFormOptions() {
@@ -731,6 +857,24 @@
               ${h.catatan ? `<p style="font-size: 12px; margin-top: 4px; font-style: italic;">Catatan: ${h.catatan}</p>` : ''}
             </div>`;
           }).join('');
+        }
+        
+        if (state.user.role === 'santri') {
+          document.getElementById('profil-absensi-card').style.display = 'block';
+          const absensiContainer = document.getElementById('profil-absensi-container');
+          if (!data.absensi_history || data.absensi_history.length === 0) {
+            absensiContainer.innerHTML = '<p style="font-size: 14px; color: var(--text-muted);">Belum ada riwayat kehadiran.</p>';
+          } else {
+            absensiContainer.innerHTML = data.absensi_history.map(a => {
+              const dateObj = new Date(a.tanggal);
+              const dateStr = isNaN(dateObj) ? a.tanggal : dateObj.toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'});
+              const statusColor = a.status === 'hadir' ? 'green' : (a.status === 'alfa' ? 'red' : 'orange');
+              return `<div style="border-left: 3px solid ${statusColor}; padding-left: 10px; margin-bottom: 10px;">
+                <p style="font-size: 14px; font-weight: bold; text-transform: capitalize;">Status: ${a.status}</p>
+                <p style="font-size: 12px; color: var(--text-muted);">${dateStr} • Ket: ${a.keterangan || '-'}</p>
+              </div>`;
+            }).join('');
+          }
         }
       } catch (err) {
         historyContainer.innerHTML = `<p style="color: red;">Gagal memuat data profil: ${err.message}</p>`;
@@ -833,6 +977,7 @@
     let currentAbsensiMembers = [];
     async function initAbsensiForm() {
       document.getElementById('absensi-tanggal').value = new Date().toISOString().split('T')[0];
+      loadAbsensiHistory();
       try {
         const res = await api('absensi.getForm');
         const select = document.getElementById('absensi-halaqah');
@@ -1283,6 +1428,7 @@
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
       const originalText = btn.innerText;
+      const editId = document.getElementById('pengguna-id').value;
       btn.disabled = true; btn.innerText = 'Menyimpan...';
 
       try {
@@ -1293,11 +1439,16 @@
           role: document.getElementById('pengguna-role').value,
           target_juz: document.getElementById('pengguna-target').value
         };
+        if (editId) payload.id = editId;
         
-        const res = await api('user.create', payload);
+        const res = await api(editId ? 'user.update' : 'user.create', payload);
         if (res.status === 'success') {
-          alert('Pengguna berhasil ditambahkan!');
+          alert(editId ? 'Data pengguna diperbarui!' : 'Pengguna berhasil ditambahkan!');
           e.target.reset();
+          document.getElementById('pengguna-id').value = '';
+          document.getElementById('pengguna-password').required = true;
+          document.getElementById('pengguna-password').placeholder = "";
+          document.getElementById('title-form-pengguna').innerText = 'Tambah Pengguna Baru';
           document.getElementById('form-pengguna-container').style.display = 'none';
           loadPenggunaData(); // Reload tabel
         }
@@ -1340,6 +1491,7 @@
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
       const originalText = btn.innerText;
+      const editId = document.getElementById('halaqah-id').value;
       btn.disabled = true; btn.innerText = 'Menyimpan...';
 
       try {
@@ -1349,10 +1501,14 @@
           day: document.getElementById('halaqah-hari').value,
           time: document.getElementById('halaqah-jam').value
         };
-        const res = await api('halaqah.create', payload);
+        if (editId) payload.id = editId;
+        
+        const res = await api(editId ? 'halaqah.update' : 'halaqah.create', payload);
         if (res.status === 'success') {
-          alert('Halaqah berhasil dibuat!');
+          alert(editId ? 'Halaqah berhasil diperbarui!' : 'Halaqah berhasil dibuat!');
           e.target.reset();
+          document.getElementById('halaqah-id').value = '';
+          document.getElementById('title-form-halaqah').innerText = 'Buat Halaqah Baru';
           document.getElementById('form-halaqah-container').style.display = 'none';
           loadHalaqahData(); initHalaqahFormOptions();
         }
@@ -1406,6 +1562,28 @@
         } finally {
           btn.disabled = false; btn.innerText = originalText;
         }
+      });
+    }
+
+    // H. Event Listener Form Ubah Password
+    if (document.getElementById('form-ubah-password')) {
+      document.getElementById('form-ubah-password').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.innerText;
+        btn.disabled = true; btn.innerText = 'Menyimpan...';
+        try {
+          const payload = {
+            old_password: document.getElementById('profil-pass-lama').value,
+            new_password: document.getElementById('profil-pass-baru').value
+          };
+          const res = await api('profile.changePassword', payload);
+          if (res.status === 'success') {
+            alert('Password berhasil diubah! Silakan masuk kembali dengan password baru.');
+            logout();
+          }
+        } catch (err) { alert('Gagal: ' + err.message); } 
+        finally { btn.disabled = false; btn.innerText = originalText; }
       });
     }
 
